@@ -1,0 +1,52 @@
+@startuml
+
+autonumber
+
+title "Weather APP Process Flow"
+
+actor User as User #Red/Yellow
+participant "Single Page App" as SPA #white\Blue
+database "Auth0" as Auth0 #white\yellow
+participant "Backend API" as Back #white/green
+database "Redis" as Redis #white/red
+participant "Weather API" as Weather #white/orange
+
+User -[#blue]> SPA
+
+SPA <[#green]- Auth0: Check if user is authorized to access application
+
+alt#gold #LightBlue "User is authenticated and authorized"
+    User <[#green]- SPA : Display Weather APP
+else #Pink "User is NOT authenticated and authorized"
+    User <[#green]- Auth0: Display Login Screen from Auth0
+    User -[#green]> User: Return to step 1
+end alt
+
+alt#gold #LightBlue "City lat/lon is available from LocalStorage"
+    SPA -[#blue]> SPA : Get City lat/lon details from LocalStorage
+else #Pink "City lat/lon is NOT available from LocalStorage"
+    User -[#blue]> SPA: User sets the City from Screen
+
+    SPA -[#blue]> Back : GET /city
+
+    alt#gold #LightBlue "City is available in Cache"
+        Back <[#green]- Redis : Get cached City details
+    else #Pink "City is NOT available in Cache"
+        Back <[#green]- Weather : Get lat and lon details from Weather API /geo/1.0/direct
+    end alt
+
+    SPA <[#green]- Back : Return City details (lat and lon) and store in localstorage
+end alt
+
+SPA -[#blue]> Back : POST /forecast - passing lat and lon of the city
+
+alt#gold #LightBlue "Forecast is cached for City/lat/lon"
+    Back <[#green]- Redis : Get cached forecast data
+else #Pink "Forecast is NOT cached for City/lat/lon"
+    Back <[#green]- Weather: GET /forecast - passing lat and lon of the city
+end alt
+SPA <[#green]- Back: Process and return forecast data
+
+User <[#green]- SPA: display Weather forecast to the user
+
+@enduml
